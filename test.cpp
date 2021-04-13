@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <iostream>
 
+#include "stream_compression.h"
 #include "scan.h"
 #include "marching_cube.h"
 
@@ -90,6 +91,35 @@ namespace cui {
 		cudaFree(d_res);
 
 		// Free host memory
+	}
+
+	namespace test {
+		struct is_pos {
+			__host__ __device__ bool operator()(const int& k) {
+				return k >= 0;
+			}
+		};
+	}
+
+	void TestInplaceStreamCompression() {
+		const int N = 7;
+		int h_A[N] = {
+			1,-1,2,3,-1,-1,4
+		};
+		int h_std_res[N] = {
+			1,2,3,4,-1,-1,-1
+		};
+		CudaTempMem<int> d_A(N);
+		cudaMemcpy(d_A, h_A, N * sizeof(int), cudaMemcpyHostToDevice);
+
+		int newN = InplaceStreamCompression(d_A.Get(), N, test::is_pos());
+
+		int h_res[N];
+		cudaMemcpy(h_res, d_A, N * sizeof(int), cudaMemcpyDeviceToHost);
+
+		assert(newN == 4);
+		for (int i = 0; i < newN; i++)
+			assert(h_res[i] == h_std_res[i]);
 	}
 
 	void TestMarchingCube() {

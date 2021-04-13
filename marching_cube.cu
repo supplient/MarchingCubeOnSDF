@@ -2,14 +2,11 @@
 #include <device_launch_parameters.h>
 #include <utility>
 
+#include "stream_compression.h"
+#include "scan.h"
+#include "cuda_temp_mem.h"
 #include "marching_cube.h"
 #include "helper.h"
-
-// DEBUG
-#include <iostream>
-#include <thrust/remove.h>
-#include <thrust/execution_policy.h>
-#include <thrust/device_ptr.h>
 
 using namespace std;
 
@@ -418,9 +415,11 @@ namespace cui {
 		}
 	}
 
-	struct is_neg {
+	struct is_pos {
 		__host__ __device__ bool operator()(const int& k) {
-			return k < 0;
+			if (k < 0)
+				return 0;
+			return 1;
 		}
 	};
 
@@ -452,11 +451,7 @@ namespace cui {
 		int* d_indices = reinterpret_cast<int*>(d_voxel_tris);
 		int indice_num = voxel_num * 5 * 3;
 
-		{
-			thrust::device_ptr<int> dev_indices = thrust::device_pointer_cast(d_indices);
-			auto dev_indices_end = thrust::remove_if(dev_indices, dev_indices + indice_num, is_neg());
-			indice_num = thrust::distance(dev_indices, dev_indices_end);
-		}
+		indice_num = InplaceStreamCompression(d_indices, indice_num, is_pos());
 
 		return {
 			d_verts,

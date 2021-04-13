@@ -157,12 +157,14 @@
   <ItemGroup>
     <ClCompile Include="helper.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="test.cpp" />
+    <CudaCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="cuda_temp_mem.h" />
     <ClInclude Include="helper.h" />
     <ClInclude Include="marching_cube.h" />
     <ClInclude Include="scan.h" />
+    <ClInclude Include="stream_compression.h" />
     <ClInclude Include="test.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

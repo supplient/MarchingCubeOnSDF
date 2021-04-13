@@ -21,12 +21,12 @@
     <CudaCompile Include="marching_cube.cu">
       <Filter>源文件</Filter>
     </CudaCompile>
+    <CudaCompile Include="test.cpp">
+      <Filter>源文件</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="test.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="helper.cpp">
@@ -44,6 +44,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="helper.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda_temp_mem.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="stream_compression.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,6 +1,7 @@
 ﻿#include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 
+#include "config.h"
 #include "helper.h"
 
 using namespace std;
@@ -96,37 +97,42 @@ namespace cui {
 		//
 		using namespace exclusive_scan;
 
-		constexpr int BLOCK_SIZE = 32; // Must be pow of 2
-		int block_num = CalBlockNum(N, 2 * BLOCK_SIZE);
-		if (block_num > 2 * BLOCK_SIZE)
+		int block_size = Config::block_size;
+		int block_size_2_pow = Config::block_size_2_pow; // Must be pow of 2
+		int block_num = CalBlockNum(N, 2 * block_size_2_pow);
+		if (block_num > 2 * block_size_2_pow)
 			throw "ExclusiveScan Error: BLOCK_SIZE too small, cannot afford such large array.";
 
-		kernel_InplaceReduce << <block_num, BLOCK_SIZE >> > (d_data, N);
+		kernel_InplaceReduce << <block_num, block_size_2_pow >> > (d_data, N);
 
 		int* d_sums;
 		const int& sum_num = block_num; // just an alias
 		cudaMalloc(&d_sums, sum_num * sizeof(int));
-		kernel_CopyToSums << <CalBlockNum(sum_num, BLOCK_SIZE), BLOCK_SIZE >> > (
+		kernel_CopyToSums << <CalBlockNum(sum_num, block_size), block_size >> > (
 			d_data, d_sums,
-			N, 2 * BLOCK_SIZE
+			N, 2 * block_size
 			);
-		kernel_InplaceReduce << <CalBlockNum(sum_num, 2 * BLOCK_SIZE), BLOCK_SIZE >> > (d_sums, sum_num);
-		kernel_InplaceDownSweep << <CalBlockNum(sum_num, 2 * BLOCK_SIZE), BLOCK_SIZE >> > (d_sums, sum_num);
+		kernel_InplaceReduce << <CalBlockNum(sum_num, 2 * block_size_2_pow), block_size_2_pow >> > (
+			d_sums, sum_num
+			);
+		kernel_InplaceDownSweep << <CalBlockNum(sum_num, 2 * block_size_2_pow), block_size_2_pow >> > (
+			d_sums, sum_num
+			);
 
-		kernel_InplaceDownSweep << <block_num, BLOCK_SIZE >> > (d_data, N);
-		kernel_AddToEachBlock << <CalBlockNum(N, 2 * BLOCK_SIZE), BLOCK_SIZE >> > (d_data, d_sums, N);
+		kernel_InplaceDownSweep << <block_num, block_size_2_pow >> > (d_data, N);
+		kernel_AddToEachBlock << <CalBlockNum(N, 2 * block_size), block_size >> > (d_data, d_sums, N);
 		cudaFree(d_sums);
 	}
 
 	void InplaceInclusiveScan(int* d_data, int N) {
 		using namespace inclusive_scan;
 
-		constexpr int BLOCK_SIZE = 32;
+		int block_size = Config::block_size;
 		int* d_data_backup;
 		cudaMalloc(&d_data_backup, N * sizeof(int));
 		cudaMemcpy(d_data_backup, d_data, N * sizeof(int), cudaMemcpyDeviceToDevice);
 		InplaceExclusiveScan(d_data, N);
-		kernel_AddBackup << <CalBlockNum(N, BLOCK_SIZE), BLOCK_SIZE >> > (d_data, d_data_backup, N);
+		kernel_AddBackup << <CalBlockNum(N, block_size), block_size >> > (d_data, d_data_backup, N);
 		cudaFree(d_data_backup);
 	}
 

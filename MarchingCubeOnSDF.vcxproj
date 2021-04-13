@@ -155,11 +155,13 @@
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="config.cpp" />
     <ClCompile Include="helper.cpp" />
     <ClCompile Include="main.cpp" />
     <CudaCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="config.h" />
     <ClInclude Include="cuda_temp_mem.h" />
     <ClInclude Include="helper.h" />
     <ClInclude Include="marching_cube.h" />

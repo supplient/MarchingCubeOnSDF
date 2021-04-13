@@ -2,6 +2,7 @@
 #include <device_launch_parameters.h>
 #include <utility>
 
+#include "config.h"
 #include "stream_compression.h"
 #include "scan.h"
 #include "cuda_temp_mem.h"
@@ -434,7 +435,7 @@ namespace cui {
 		//
 		using namespace marching_cube;
 
-		constexpr int BLOCK_SIZE = 32;
+		int block_size = Config::block_size;
 		int node_num = xn * yn * zn;
 		int voxel_num = (xn - 1) * (yn - 1) * (zn - 1);
 
@@ -443,8 +444,8 @@ namespace cui {
 		TrianglesInVoxel* d_voxel_tris;
 		cudaMalloc(&d_voxel_tris, voxel_num * sizeof(TrianglesInVoxel));
 
-		kernel_CalEdgeVerts << <CalBlockNum(node_num, BLOCK_SIZE), BLOCK_SIZE >> > (d_edge_verts, d_SDF, d_positions, xn, yn, zn);
-		kernel_CalVoxelTris << <CalBlockNum(voxel_num, BLOCK_SIZE), BLOCK_SIZE >> > (d_voxel_tris, d_SDF, xn, yn, zn);
+		kernel_CalEdgeVerts << <CalBlockNum(node_num, block_size), block_size >> > (d_edge_verts, d_SDF, d_positions, xn, yn, zn);
+		kernel_CalVoxelTris << <CalBlockNum(voxel_num, block_size), block_size >> > (d_voxel_tris, d_SDF, xn, yn, zn);
 
 		Vertex* d_verts = reinterpret_cast<Vertex*>(d_edge_verts);
 		int vert_num = node_num * 3;

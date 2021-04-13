@@ -3,6 +3,7 @@
 #include <cuda_runtime_api.h>
 #include <device_launch_parameters.h>
 
+#include "config.h"
 #include "helper.h"
 #include "scan.h"
 #include "cuda_temp_mem.h"
@@ -41,10 +42,10 @@ namespace cui {
 	int InplaceStreamCompression(InputType* d_data, int N, CheckFunc func) {
 		using namespace stream_compression;
 
-		constexpr int BLOCK_SIZE = 32;
+		int block_size = Config::block_size;
 
 		CudaTempMem<int> d_stencil(N);
-		kernel_Transform << <CalBlockNum(N, BLOCK_SIZE), BLOCK_SIZE >> > (
+		kernel_Transform << <CalBlockNum(N, block_size), block_size >> > (
 			d_stencil, d_data, N, func
 			);
 		InplaceInclusiveScan(d_stencil, N);
@@ -53,11 +54,11 @@ namespace cui {
 		cudaMemcpy(&res_num, d_stencil.Get() + N - 1, sizeof(int), cudaMemcpyDeviceToHost);
 
 		CudaTempMem<int> d_copy(N);
-		kernel_Copy << <CalBlockNum(N, BLOCK_SIZE), BLOCK_SIZE >> > (
+		kernel_Copy << <CalBlockNum(N, block_size), block_size >> > (
 			d_copy.Get(), d_data, N
 			);
 
-		kernel_MapIfLeftDiff << <CalBlockNum(N, BLOCK_SIZE), BLOCK_SIZE >> > (
+		kernel_MapIfLeftDiff << <CalBlockNum(N, block_size), block_size >> > (
 			d_data, d_copy.Get(), d_stencil.Get(), N
 			);
 

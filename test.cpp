@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <iostream>
 
+#include "timer.h"
 #include "stream_compression.h"
 #include "scan.h"
 #include "marching_cube.h"
@@ -122,9 +123,10 @@ namespace cui {
 			assert(h_res[i] == h_std_res[i]);
 	}
 
-	void TestMarchingCube() {
+	double TestMarchingCube() {
 		using namespace std;
 
+		// Init data
 		constexpr float R = 0.5;
 		constexpr int N = 3; // node number per dim
 		constexpr int NODE_NUM = N * N * N;
@@ -161,52 +163,71 @@ namespace cui {
 					h_positions[id] = { x, y, z };
 				}
 
-		float* d_sdf;
-		cudaMalloc(&d_sdf, N * N * N * sizeof(float));
-		Vertex* d_positions;
-		cudaMalloc(&d_positions, N * N * N * sizeof(Vertex));
+		Vertex* h_vert_array = new Vertex[N * N * N * 3];
+		int* h_ind_array = new int[N * N * N * 5 * 3];
+		int vert_num;
+		int ind_size;
 
-		cudaMemcpy(d_sdf, h_sdf, N * N * N * sizeof(float), cudaMemcpyHostToDevice);
-		cudaMemcpy(d_positions, h_positions, N * N * N * sizeof(Vertex), cudaMemcpyHostToDevice);
+		auto Work = [&h_sdf, &h_positions, &vert_num, &h_vert_array, &ind_size, &h_ind_array]() {
+			// Trans data to GPU
+			float* d_sdf;
+			Vertex* d_positions;
+			cudaMalloc(&d_sdf, N * N * N * sizeof(float));
+			cudaMalloc(&d_positions, N * N * N * sizeof(Vertex));
 
-		auto res = MarchingCube(d_sdf, d_positions, N, N, N);
-		Vertex* d_vert_array = get<0>(res);
-		int vert_num = get<1>(res);
-		int* d_ind_array = get<2>(res);
-		int ind_size = get<3>(res);
+			cudaMemcpy(d_sdf, h_sdf, N * N * N * sizeof(float), cudaMemcpyHostToDevice);
+			cudaMemcpy(d_positions, h_positions, N * N * N * sizeof(Vertex), cudaMemcpyHostToDevice);
 
-		Vertex* h_vert_array = new Vertex[vert_num];
-		int* h_ind_array = new int[ind_size];
-		cudaMemcpy(h_vert_array, d_vert_array, vert_num * sizeof(Vertex), cudaMemcpyDeviceToHost);
-		cudaMemcpy(h_ind_array, d_ind_array, ind_size * sizeof(int), cudaMemcpyDeviceToHost);
+			// Work
+			auto res = MarchingCube(d_sdf, d_positions, N, N, N);
+			Vertex* d_vert_array = get<0>(res);
+			vert_num = get<1>(res);
+			int* d_ind_array = get<2>(res);
+			ind_size = get<3>(res);
 
-		cout << "vert_array: " << endl;
-		for (int i = 0; i < vert_num; i++) {
-			const Vertex& v = h_vert_array[i];
-			cout << i << ": (" << v.x << "," << v.y << "," << v.z << ")\n";
-		}
-		cout << endl;
+			// Trans data to CPU
+			cudaMemcpy(h_vert_array, d_vert_array, vert_num * sizeof(Vertex), cudaMemcpyDeviceToHost);
+			cudaMemcpy(h_ind_array, d_ind_array, ind_size * sizeof(int), cudaMemcpyDeviceToHost);
 
-		cout << "ind_array: " << endl;
-		for (int i = 0; i < ind_size; i++) {
-			if (i % 3 == 0)
-				cout << "(";
-			cout << h_ind_array[i];
-			if (i % 3 == 2)
-				cout << "), ";
-			else
-				cout << ",";
+			// Free device memory
+			cudaFree(d_vert_array);
+			cudaFree(d_ind_array);
+			cudaFree(d_sdf);
+			cudaFree(d_positions);
+		};
 
-			if (i % 15 == 14)
-				cout << endl;
-		}
-		cout << endl;
+		double time = Timer::MeasureTime(Work);
 
-		cudaFree(d_vert_array);
-		cudaFree(d_ind_array);
-		cudaFree(d_sdf);
-		cudaFree(d_positions);
+		// Check result
+		auto OutputRes = [&vert_num, &h_vert_array, &ind_size, &h_ind_array]() {
+			cout << "vert_array: " << endl;
+			for (int i = 0; i < vert_num; i++) {
+				const Vertex& v = h_vert_array[i];
+				cout << i << ": (" << v.x << "," << v.y << "," << v.z << ")\n";
+			}
+			cout << endl;
+
+			cout << "ind_array: " << endl;
+			for (int i = 0; i < ind_size; i++) {
+				if (i % 3 == 0)
+					cout << "(";
+				cout << h_ind_array[i];
+				if (i % 3 == 2)
+					cout << "), ";
+				else
+					cout << ",";
+
+				if (i % 15 == 14)
+					cout << endl;
+			}
+			cout << endl;
+		};
+		OutputRes();
+
+		// Free host memory
 		delete[] h_vert_array;
 		delete[] h_ind_array;
+
+		return time;
 	}
 }
